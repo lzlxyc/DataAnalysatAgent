@@ -1,0 +1,10 @@
+matplotlib==3.10.6
+numpy==2.3.3
+openai==1.109.1
+pandas==2.3.2
+pymysql==1.1.2
+python-dotenv==1.1.1
+seaborn==0.13.2
+setuptools==75.8.0
+tiktoken==0.11.0
+transformers==4.56.1
