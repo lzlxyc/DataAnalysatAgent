@@ -21,7 +21,7 @@ class DataFlowAgent:
         """
         初始参数解释：
         api_key：必选参数，表示调用OpenAI模型所必须的字符串密钥，没有默认取值，需要用户提前设置才可使用MateGen；
-        model：可选参数，表示当前选择的Chat模型类型，默认为gpt-3.5-turbo，具体当前OpenAI账户可以调用哪些模型，可以参考官网Limit链接：https://platform.openai.com/account/limits ；
+        model：可选参数，表示当前选择的Chat模型类型，默认为deepseek-chat，具体当前OpenAI账户可以调用哪些模型，可以参考官网Limit链接：https://platform.openai.com/account/limits ；
         system_content_list：可选参数，表示输入的系统消息或者外部文档，默认为空列表，表示不输入外部文档；
         project：可选参数，表示当前对话所归属的项目名称，需要输入InterProject类对象，用于表示当前对话的本地存储方法，默认为None，表示不进行本地保存；
         messages：可选参数，表示当前对话所继承的Messages，需要是ChatMessages对象、或者是字典所构成的list，默认为None，表示不继承Messages；
@@ -29,8 +29,20 @@ class DataFlowAgent:
         is_enhanced_mode：可选参数，表示当前对话是否开启增强模式，增强模式下会自动开启复杂任务拆解流程以及深度debug功能，会需要耗费更多的计算时间和金额，不过会换来Agent整体性能提升，默认为False；
         is_developer_mode：可选参数，表示当前对话是否开启开发者模式，在开发者模式下，模型会先和用户确认文本或者代码是否正确，再选择是否进行保存或者执行，对于开发者来说借助开发者模式可以极大程度提升模型可用性，但并不推荐新人使用，默认为False；
         example:
-            >>> xxx
-            >>> xxx
+            >>> af = AvailableFunctions(
+                    functions_list=[sql_inter, extract_data, python_inter, fig_inter]
+                )
+            >>> data_dictionary = open('telco_data_dictionary.md').read()
+
+            >>> agent = DataFlowAgent(
+                    model=model,
+                    env_path=env_path,
+                    available_functions=af,
+                    system_content_list=[data_dictionary],
+                    is_enhanced_mode=is_enhanced_mode,
+                    is_developer_mode=is_developer_mode
+                )
+            >>> agent.run()
         """
         self.model:str = model
         self.project:InterProject = project
@@ -50,15 +62,20 @@ class DataFlowAgent:
 
         self.llm_api = LlmBox(env_path, self.model)
 
+        if is_enhanced_mode:
+            print("====>>> 开启增强模式中...")
+        if is_developer_mode:
+            print("====>>> 开启开发者模式中...")
 
     def _base_chat(self):
-        return get_chat_response(
+        messages = get_chat_response(
             llm_api=self.llm_api,
             messages=self.messages,
             available_functions=self.available_functions,
             is_developer_mode=self.is_developer_mode,
             is_enhanced_mode=self.is_enhanced_mode
         )
+        return messages
 
     def run(self, question=None):
         """
@@ -77,9 +94,14 @@ class DataFlowAgent:
                     self.messages.messages_append(user_input_msg)
 
                 print(f'🤔: {user_input}')
+
+                # print("$$$$$$################", self.messages.messages[-3:])
+
         else:
             self.messages.messages_append({"role": "user", "content": question})
             self.messages = self._base_chat()
+
+
 
     def reset(self):
         """

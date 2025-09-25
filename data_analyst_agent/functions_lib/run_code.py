@@ -1,6 +1,6 @@
 
 
-def python_inter(py_code, g='globals()'):
+def python_inter(py_code, g:dict='globals()'):
     """
     专门用于执行非绘图类python代码，并获取最终查询或处理结果。若是设计绘图操作的Python代码，则需要调用fig_inter函数来执行。
     :param py_code: 字符串形式的Python代码，用于执行对telco_db数据库中各张数据表进行操作

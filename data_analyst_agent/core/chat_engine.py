@@ -1,7 +1,11 @@
 import json
+from pprint import pprint
 
-from .messages import ChatMessages, MessageType, MessageDict
-
+from .messages import (
+    ChatMessages,
+    MessageType,
+    MessageDict
+)
 
 from ..api import LlmBox
 from ..utils.helpers import (
@@ -36,8 +40,8 @@ def get_deepseek_response(
         messages = modify_prompt(messages, action='add')
 
     # 如果是增强模式，则增加复杂任务拆解流程
-    if is_enhanced_mode:
-        messages = add_task_decomposition_prompt(messages)
+    # if is_enhanced_mode:
+    #     messages = add_task_decomposition_prompt(messages)
 
     # 若不存在外部函数
     if available_functions is None:
@@ -88,7 +92,8 @@ def check_get_final_function_response(
             debug_prompt_list = [
                 "之前执行的代码报错了，你觉得代码哪里编写错了？",
                 "好的。那么根据你的分析，为了解决这个错误，从理论上来说，应该如何操作呢？",
-                "非常好，接下来请按照你的逻辑编写相应代码并运行。"]
+                "非常好，接下来请按照你的逻辑编写相应代码并运行。"
+            ]
 
         print(debug_info)
 
@@ -129,7 +134,7 @@ def check_get_final_function_response(
     return messages
 
 
-def is_text_response_vaild(
+def is_text_response_valid(
         llm_api:LlmBox,
         messages:ChatMessages,
         text_answer_message:MessageType,
@@ -169,7 +174,7 @@ def is_text_response_vaild(
     # 若是开发者模式，或者是增强模式下任务拆解结果，则引导用户对其进行审查
     # 若是开发者模式而非任务拆解
     if not is_task_decomposition and is_developer_mode:
-        user_input = input("你好，请问是否记录回答结果，记录结果请输入1；\
+        user_input = input("对话模式：你好，请问是否记录回答结果，记录结果请输入1；\
         对当前结果提出修改意见请输入2；\
         重新进行提问请输入3，\
         直接退出对话请输入4")
@@ -180,7 +185,7 @@ def is_text_response_vaild(
 
     # 若是任务拆解
     elif is_task_decomposition:
-        user_input = input("请问是否按照该流程执行任务（1），\
+        user_input = input("【进行任务拆解】请问是否按照该流程执行任务（1），\
         或者对当前执行流程提出修改意见（2），\
         或者重新进行提问（3），\
         或者直接退出对话（4）")
@@ -240,6 +245,7 @@ def is_text_response_vaild(
                 is_task_decomposition=is_task_decomposition)
 
         else:
+            messages.messages_append(text_answer_message)
             print(">>> 好的，已退出当前对话")
 
     # 若不是开发者模式
@@ -250,7 +256,7 @@ def is_text_response_vaild(
     return messages
 
 
-def is_code_response_vaild(
+def is_code_response_valid(
         llm_api:LlmBox,
         messages:ChatMessages,
         function_call_message:MessageType,
@@ -282,10 +288,11 @@ def is_code_response_vaild(
     '''
     TUDO: 有递归调用的风险
     '''
+    code_json_str = function_call_message.tool_calls[0].function.arguments
 
     def display_code():
         '''给用户展示即将运行的代码，如果是开发模式，就让用户看看需不需要修改'''
-        code_json_str = function_call_message.tool_calls[0].function.arguments
+
         code_dict = json.loads(code_json_str)
         print(">>> 即将执行以下代码：")
 
@@ -305,7 +312,7 @@ def is_code_response_vaild(
     except Exception as e:
         print(f">>> 代码展示错误:{e}")
 
-        return get_chat_response(
+        messages = get_chat_response(
             llm_api=llm_api,
             messages=messages,
             available_functions=available_functions,
@@ -313,22 +320,30 @@ def is_code_response_vaild(
             is_enhanced_mode=is_enhanced_mode,
             delete_some_messages=delete_some_messages,
         )
+        return messages
 
 
     # 如果时开发者模式，提示用户对代码进行审然后再运行
     if is_developer_mode:
         user_input = input("如果想直接运行代码，就输入1, 如果想反馈修改意见就让模型对代码进行修改后再运行,输入2。")
         if user_input == "1":
-            print(">>> 好的，正在运行代码，请稍等...")
+            print("💻：好的，正在运行代码，请稍等...")
         else:
             modify_input = input("好的，请输入修改意见：")
             # 记录模型当前创建的代码和修改意见，等模型获取到意见再生成新代码后，再把这两条删掉
-            messages.messages_append(function_call_message)
-            suggestion = {'role': 'user', 'content': modify_input}
-            messages.messages_append(suggestion)
+            """
+            这里有个bug：就是模型返回tool_calls消息后，后面需要紧跟着一条tool_calls运行后的结果
+            这里的解决方法是：不把tool_calls添加进messages中，而是提取出它的内容到messages中，
+            变成普通的文本响应，这样后面就不需要跟tool_calls运行的结果
+            """
+            # messages.messages_append(function_call_message)
+            tool_calls_to_text = {'role': 'assistant', 'content': code_json_str}
+            fix_suggestion = {'role': 'user', 'content': modify_input}
+            messages.messages_append(tool_calls_to_text) # tool_calls变成文本
+            messages.messages_append(fix_suggestion)
 
             # 调用大模型重新返回结果
-            return get_chat_response(
+            messages = get_chat_response(
                 llm_api=llm_api,
                 messages=messages,
                 available_functions=available_functions,
@@ -336,13 +351,17 @@ def is_code_response_vaild(
                 is_enhanced_mode=is_enhanced_mode,
                 delete_some_messages=2
             )
+            # print("is_code_response_valid：", messages.messages[-3:])
+            return messages
+
     # 如果是非开发者模式，或者开发者模式下用户不进行代码修改，直接调用运行函数，运行代码获得结果
     function_response_message = function_to_call(
         available_functions=available_functions,
         function_call_message=function_call_message
     )
+    print(f"💻: 代码运行结果：{function_response_message}")
     # 将代码运行结果带入到审查函数中
-    return check_get_final_function_response(
+    messages = check_get_final_function_response(
         llm_api=llm_api,
         messages=messages,
         function_call_message=function_call_message,
@@ -352,6 +371,7 @@ def is_code_response_vaild(
         is_enhanced_mode=is_enhanced_mode,
         delete_some_messages=delete_some_messages
     )
+    return messages
 
 
 def get_chat_response(
@@ -379,6 +399,9 @@ def get_chat_response(
     '''
     # 当围绕复杂任务拆解结果进行修改时，才会出现is_task_decomposition=True的情况
     # 当is_task_decomposition=True时，不再重新创建response_message
+
+    print("chat_response:", messages.messages[-2:])
+
     if not is_task_decomposition:
         # 先后去单次大模型调用结果
         response_message = get_deepseek_response(
@@ -401,6 +424,8 @@ def get_chat_response(
             is_developer_mode=is_developer_mode,
             is_enhanced_mode=is_enhanced_mode
         )
+        if response_message.tool_calls:
+            print("当前任务无需拆解，可以直接运行。")
 
     # 若本次调用是由修改对话需求产生的，则按照参数设置删除原始message中的若干条消息
     # 注意：删除中间若干条消息，必须在创建完新的response_message之后在执行
@@ -411,12 +436,12 @@ def get_chat_response(
     # 到此为止，产生了一个response_message,接下来根据不同类型，调用不同的路径（文本\code）
     if not response_message.tool_calls:
         # 若是文本响应类任务（包括普通文本响应和和复杂任务拆解审查两种情况，都可以使用相同代码）
-        func_mode = is_text_response_vaild
+        func_mode = is_text_response_valid
     else:
         # 如果是调用function call模式，此时输入的response_message是一个包含SQL或者python代码的JSON对象，输入给代码审查&执行的函数，输出为外部函数运行后的结果
-        func_mode = is_code_response_vaild
+        func_mode = is_code_response_valid
 
-    return func_mode(
+    messages = func_mode(
         llm_api,
         messages,
         response_message,
@@ -426,3 +451,4 @@ def get_chat_response(
         delete_some_messages,
         is_task_decomposition=is_task_decomposition
     )
+    return messages

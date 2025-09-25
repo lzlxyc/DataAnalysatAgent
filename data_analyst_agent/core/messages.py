@@ -52,7 +52,7 @@ class ChatMessages:
 
 
         # 将外部输入文档列表依次保存为系统消息
-        if system_content_list != []:
+        if system_content_list and isinstance(system_content_list, list):
             for content in system_content_list:
                 system_messages.append(
                     {"role": "system", "content": content})
@@ -67,7 +67,7 @@ class ChatMessages:
             num_of_system_messages = len(system_content_list)
 
             # 若存在最大token数量限制
-            if tokens_thr != None:
+            if tokens_thr is not None:
                 # 若系统消息超出限制
                 if system_tokens_count >= tokens_thr:
                     print(">>> system_messages的tokens数量超出限制，当前系统消息将不会被输入模型，若有必要，请重新调整外部文档数量。")
@@ -93,7 +93,7 @@ class ChatMessages:
         all_tokens_count += user_tokens_count
 
         # 若存在最大token限制
-        if tokens_thr != None:
+        if tokens_thr is not None:
             # 若超出最大token限制
             if all_tokens_count >= tokens_thr:
                 print(">>> 当前用户问题的tokens数量超出限制，该消息无法被输入到模型中，请重新输入用户问题或调整外部文档数量。")
@@ -118,8 +118,8 @@ class ChatMessages:
 
     # 删除部分对话信息
     def messages_pop(self, manual=False, index=None):
-        def reduce_tokens(index):
-            drop_message = self.history_messages.pop(index)
+        def reduce_tokens(idx):
+            drop_message = self.history_messages.pop(idx)
             self.tokens_count -= len(self.encoding(str(drop_message)))
 
         if self.tokens_thr is not None:
@@ -201,7 +201,7 @@ class ChatMessages:
     # 删除系统消息
     def delete_system_messages(self):
         system_content_list = self.system_content_list
-        if system_content_list != []:
+        if system_content_list:
             system_content_str = ''
             for content in system_content_list:
                 system_content_str += content
@@ -219,6 +219,6 @@ class ChatMessages:
         # 从后向前迭代列表
         for index in range(len(history_messages) - 1, -1, -1):
             message = history_messages[index]
-            if message.get("tool_calls") or message.get("role") == "tools":
+            if type(message) in [MessageType, ChatMessages] and (message.tool_calls or message.role == "tools"):
                 self.messages_pop(manual=True, index=index)
 
