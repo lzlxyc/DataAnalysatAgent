@@ -58,17 +58,19 @@ def fig_inter(py_code, fname, g='globals()'):
 
     try:
         exec(py_code, g, local_vars)
+        return "成功执行完代码。"
     except Exception as e:
         return f"代码执行时报错{e}"
 
     # 回复默认后端
-    matplotlib.use(current_backend)
+    # matplotlib.use(current_backend)
 
     # 根据图片名称，获取图片对象
-    fig = local_vars[fname]
+    # fig = local_vars[fname]
+    # return "成功上传图片。"
 
     # 上传图片
-    res = "无法上传图片至谷歌云盘，请检查谷歌云盘文件夹ID，并检查当前网络情况"
-
-    print(f'>>> {res}')
-    return res
+    # res = "无法上传图片至谷歌云盘，请检查谷歌云盘文件夹ID，并检查当前网络情况"
+    #
+    # print(f'>>> {res}')
+    # return res

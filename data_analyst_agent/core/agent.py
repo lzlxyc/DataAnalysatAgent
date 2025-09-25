@@ -85,7 +85,10 @@ class DataFlowAgent:
         if question is None:
             while True:
                 self.messages = self._base_chat()
-                user_input = input("🤖: 您还有其他问题吗？(输入Q或q以结束对话): ")
+                user_input = input("🤖: 您还有其他问题吗？(输入cls清除之前对话，输入Q或q以结束对话): ")
+                if user_input == 'cls':
+                    self.reset()
+                    user_input = input("🤖: 已开启新对话，您有什么问题需要解决？(输入Q或q以结束对话): ")
 
                 if user_input in ['q','Q']:
                     break

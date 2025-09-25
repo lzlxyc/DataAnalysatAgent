@@ -120,7 +120,7 @@ def check_get_final_function_response(
 
     # 如果不包含报错信息，直接将结果传给大模型
     else:
-        print(">>> 外部函数已执行完毕，正在解析运行结果...")
+        print(">>> 外部函数已执行完毕，正在解析运行结果...", function_call_message)
         messages.messages_append(function_call_message)
         messages.messages_append(function_response_message)
         messages = get_chat_response(
@@ -400,7 +400,9 @@ def get_chat_response(
     # 当围绕复杂任务拆解结果进行修改时，才会出现is_task_decomposition=True的情况
     # 当is_task_decomposition=True时，不再重新创建response_message
 
-    print("chat_response:", messages.messages[-2:])
+    # print("chat_response:")
+    # for m in messages.messages[-2:]:
+    #     print(m)
 
     if not is_task_decomposition:
         # 先后去单次大模型调用结果
