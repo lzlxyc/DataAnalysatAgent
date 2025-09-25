@@ -10,6 +10,7 @@
 
 </div>
 
+
 ## 📖 简介
 DataFlowAgent 是一个先进的自动数据分析代理系统，能够通过自然语言对话自动完成数据库连接、SQL/Python代码生成与执行、数据分析报告生成等复杂任务。
 
@@ -189,6 +190,7 @@ dataflow-agent/
 - 项目主页：https://github.com/lzlxyc/AutoSearchAgen
 - 问题反馈：https://github.com/lzlxyc/AutoSearchAgen/issues
 - 邮箱：lzl_xyc@163.com
+- 作者：林晚飞
 ---
 
 ## 🔮 路线图
